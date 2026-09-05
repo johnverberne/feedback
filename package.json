@@ -1,0 +1,29 @@
+{
+  "name": "feedback",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Markdown-formulier dat website-feedback als GitHub-issue post, inclusief screenshot",
+  "type": "commonjs",
+  "scripts": {
+    "install:all": "npm install && npm --prefix ./client install",
+    "dev": "npm run build && nodemon server/server.js",
+    "dev:vite": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/server.js",
+    "client": "npm --prefix ./client run dev",
+    "build": "node scripts/build-client.js",
+    "start": "node server/server.js",
+    "prod": "npm run build && node scripts/prod.js",
+    "test": "node --test --test-force-exit \"tests/**/*.test.js\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "projects-captainjohn": "file:../projects-captainjohn"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.1.0",
+    "supertest": "^7.0.0"
+  }
+}

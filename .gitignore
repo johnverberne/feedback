@@ -1,0 +1,11 @@
+node_modules/
+client/node_modules/
+client/dist/
+data/
+.*
+!.gitignore
+!.env.example
+!.github/
+!.github/**
+*.log
+dist/
