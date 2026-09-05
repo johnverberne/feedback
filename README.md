@@ -59,14 +59,17 @@ Open http://localhost:5065
 | Variabele | Doel |
 |---|---|
 | `PORT` | Standaard `5065` |
-| `PUBLIC_URL` | Publieke URL (screenshot-links in issues) |
+| `PUBLIC_URL` | Fallback-URL voor screenshots zonder GitHub-token |
 | `GITHUB_REPO` | Standaard `johnverberne/projects-captainjohn` |
+| `GITHUB_ASSETS_REPO` | Publieke repo voor PNG-screenshots (`johnverberne/feedback`) |
 | `GITHUB_TOKEN` | Token met `repo` (en `project` als je een Project-bord wilt) |
 | `GITHUB_LABELS` | Standaard `feedback` |
 | `GITHUB_PROJECT_NUMBER` | Optioneel Projects v2-nummer |
 | `ALLOWED_ORIGINS` | CORS voor screenshot-intake |
 
 Zonder `GITHUB_TOKEN` wordt het issue lokaal bewaard (`data/issues/`) zodat je het formulier kunt testen.
+
+Screenshots worden als PNG in `johnverberne/feedback` gezet (`screenshots/…png`). GitHub kan die raw-URL's wél tonen; een `localhost`-link in het issue werkt niet.
 
 ## Koppeling met Captain John
 

@@ -55,17 +55,26 @@ async function ensureLabels(repo, token, labels) {
   }
 }
 
-async function uploadScreenshot({ repo, token, id, buffer }) {
-  const filePath = `feedback-screenshots/${id}.png`;
+function screenshotFilePath(id) {
+  return `screenshots/${id}.png`;
+}
+
+function screenshotRawUrl(repo, id) {
+  return `https://raw.githubusercontent.com/${repo}/main/${screenshotFilePath(id)}`;
+}
+
+async function uploadScreenshot({ repo, token, id, buffer, branch = "main" }) {
+  const filePath = screenshotFilePath(id);
   await githubJson(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
     token,
     method: "PUT",
     body: {
       message: `feedback: screenshot ${id}`,
       content: buffer.toString("base64"),
+      branch,
     },
   });
-  return `https://raw.githubusercontent.com/${repo}/main/${filePath}`;
+  return screenshotRawUrl(repo, id);
 }
 
 async function addIssueToProject({ repo, token, projectNumber, issueNodeId }) {
@@ -140,5 +149,7 @@ module.exports = {
   createFeedbackIssue,
   ensureLabels,
   uploadScreenshot,
+  screenshotFilePath,
+  screenshotRawUrl,
   DEFAULT_LABELS,
 };

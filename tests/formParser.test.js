@@ -2,6 +2,7 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { parseFormMarkdown, validateAnswers } = require("../server/formParser");
 const { buildIssueMarkdown, issueTitle } = require("../server/issueMarkdown");
+const { screenshotRawUrl } = require("../server/github");
 
 const SAMPLE = `# Feedback test
 
@@ -85,5 +86,15 @@ describe("issueMarkdown", () => {
     assert.match(body, /Lightbox sluit niet/);
     assert.match(body, /!\[Screenshot\]/);
     assert.equal(issueTitle(form, answers), "[Feedback] Bug: Lightbox sluit niet");
+  });
+});
+
+describe("github screenshot-url", () => {
+  it("gebruikt een raw.githubusercontent.com-png die GitHub kan tonen", () => {
+    const url = screenshotRawUrl("johnverberne/feedback", "abc-123");
+    assert.equal(
+      url,
+      "https://raw.githubusercontent.com/johnverberne/feedback/main/screenshots/abc-123.png"
+    );
   });
 });

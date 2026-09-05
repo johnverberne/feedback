@@ -5,7 +5,7 @@ const cors = require("cors");
 const { parseFormMarkdown, validateAnswers } = require("./formParser");
 const { buildIssueMarkdown, issueTitle } = require("./issueMarkdown");
 const { createSessionStore } = require("./sessions");
-const { createFeedbackIssue } = require("./github");
+const { createFeedbackIssue, uploadScreenshot } = require("./github");
 
 function loadForm(formPath) {
   const markdown = fs.readFileSync(formPath, "utf8");
@@ -48,6 +48,10 @@ function createApp(options = {}) {
   );
   const githubRepo =
     options.githubRepo || process.env.GITHUB_REPO || "johnverberne/projects-captainjohn";
+  const githubAssetsRepo =
+    options.githubAssetsRepo ||
+    process.env.GITHUB_ASSETS_REPO ||
+    "johnverberne/feedback";
   const githubToken = options.githubToken || process.env.GITHUB_TOKEN || "";
   const githubLabels = parseLabels(options.githubLabels || process.env.GITHUB_LABELS);
   const projectNumber =
@@ -129,11 +133,21 @@ function createApp(options = {}) {
       return res.status(400).json({ error: checked.errors.join(" · "), errors: checked.errors });
     }
 
-    const screenshotUrl = session.hasScreenshot
+    let screenshotUrl = session.hasScreenshot
       ? screenshotPublicUrl(req, session.id)
       : null;
+    const screenshotBuffer = sessions.screenshotBuffer(session.id);
 
     try {
+      if (githubToken && screenshotBuffer) {
+        screenshotUrl = await uploadScreenshot({
+          repo: githubAssetsRepo,
+          token: githubToken,
+          id: session.id,
+          buffer: screenshotBuffer,
+        });
+      }
+
       const screenshotMarkdown = screenshotUrl
         ? `![Screenshot](${screenshotUrl})`
         : "";
