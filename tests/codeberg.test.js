@@ -1,6 +1,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { codebergBase, splitRepo } = require("../server/codeberg");
+const { isAllowedOrigin } = require("../server/createApp");
 
 describe("codeberg helpers", () => {
   it("normaliseert de Forgejo-basis-URL", () => {
@@ -14,5 +15,22 @@ describe("codeberg helpers", () => {
       name: "projects-captainjohn",
     });
     assert.throws(() => splitRepo("ongeldig"), /owner\/name/);
+  });
+});
+
+describe("CORS origins", () => {
+  it("laat het productiedomein altijd toe", () => {
+    assert.equal(
+      isAllowedOrigin("https://projects.captainjohn.nl", [
+        "https://projects-captainjohn-production.up.railway.app",
+      ]),
+      true
+    );
+    assert.equal(
+      isAllowedOrigin("https://evil.example", [
+        "https://projects-captainjohn-production.up.railway.app",
+      ]),
+      false
+    );
   });
 });

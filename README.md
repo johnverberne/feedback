@@ -71,7 +71,7 @@ Open http://localhost:5065
 | `CODEBERG_URL` | Optioneel. Standaard `https://codeberg.org` |
 | `CODEBERG_REPO` | Optioneel. Standaard `johnverberne/projects-captainjohn` |
 | `CODEBERG_TOKEN` | Optioneel. Zonder token geen Codeberg-issue |
-| `ALLOWED_ORIGINS` | CORS voor screenshot-intake |
+| `ALLOWED_ORIGINS` | Extra CORS-origins. `https://projects.captainjohn.nl` is altijd toegestaan |
 
 GitHub en Codeberg zijn optioneel. Zonder token (of met `*_ENABLED=false`) wordt het issue in MongoDB of lokaal bewaard.
 

@@ -15,11 +15,25 @@ function loadForm(formPath) {
   return { markdown, form: parseFormMarkdown(markdown) };
 }
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:5055",
+  "http://localhost:5173",
+  "https://projects.captainjohn.nl",
+  "https://projects-captainjohn-production.up.railway.app",
+];
+
 function parseOrigins(value) {
   return String(value || "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function isAllowedOrigin(origin, allowed) {
+  if (!origin) return true;
+  if (DEFAULT_ALLOWED_ORIGINS.includes(origin)) return true;
+  if (allowed.length === 0) return true;
+  return allowed.includes(origin);
 }
 
 function parseLabels(value) {
@@ -70,10 +84,7 @@ function createApp(options = {}) {
   app.use(
     cors({
       origin(origin, callback) {
-        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        callback(null, false);
+        callback(null, isAllowedOrigin(origin, allowedOrigins));
       },
     })
   );
@@ -281,4 +292,9 @@ function createApp(options = {}) {
   return app;
 }
 
-module.exports = { createApp, loadForm };
+module.exports = {
+  createApp,
+  loadForm,
+  isAllowedOrigin,
+  DEFAULT_ALLOWED_ORIGINS,
+};
