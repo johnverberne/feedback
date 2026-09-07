@@ -21,8 +21,14 @@ const FeedbackIssueSchema = new mongoose.Schema(
   { timestamps: true, collection: "feedback_issues" }
 );
 
-FeedbackIssueSchema.index({ githubNumber: 1 }, { unique: true, sparse: true });
-FeedbackIssueSchema.index({ codebergNumber: 1 }, { unique: true, sparse: true });
+FeedbackIssueSchema.index(
+  { githubNumber: 1 },
+  { unique: true, partialFilterExpression: { githubNumber: { $type: "number" } } }
+);
+FeedbackIssueSchema.index(
+  { codebergNumber: 1 },
+  { unique: true, partialFilterExpression: { codebergNumber: { $type: "number" } } }
+);
 
 module.exports =
   mongoose.models.FeedbackIssue ||

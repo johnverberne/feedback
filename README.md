@@ -61,17 +61,19 @@ Open http://localhost:5065
 | `PORT` | Standaard `5065` |
 | `MONGODB_URI` | MongoDB-connectie (collectie `feedback_issues`) |
 | `PUBLIC_URL` | Fallback-URL voor screenshots zonder GitHub-token |
-| `GITHUB_REPO` | Standaard `johnverberne/projects-captainjohn` |
-| `GITHUB_ASSETS_REPO` | Publieke repo voor PNG-screenshots (`johnverberne/feedback`) |
-| `GITHUB_TOKEN` | Token met `repo` (en `project` als je een Project-bord wilt) |
-| `GITHUB_LABELS` | Standaard `feedback` |
+| `GITHUB_ENABLED` | Optioneel. `false` zet GitHub uit, ook als er een token staat |
+| `GITHUB_REPO` | Optioneel. Standaard `johnverberne/projects-captainjohn` |
+| `GITHUB_ASSETS_REPO` | Optioneel. Publieke repo voor PNG-screenshots |
+| `GITHUB_TOKEN` | Optioneel. Zonder token geen GitHub-issue |
+| `GITHUB_LABELS` | Optioneel. Standaard `feedback` |
 | `GITHUB_PROJECT_NUMBER` | Optioneel Projects v2-nummer |
-| `CODEBERG_URL` | Standaard `https://codeberg.org` |
-| `CODEBERG_REPO` | Standaard `johnverberne/projects-captainjohn` |
-| `CODEBERG_TOKEN` | Token met `write:issue` ([Applications](https://codeberg.org/user/settings/applications)) |
+| `CODEBERG_ENABLED` | Optioneel. `false` zet Codeberg uit, ook als er een token staat |
+| `CODEBERG_URL` | Optioneel. Standaard `https://codeberg.org` |
+| `CODEBERG_REPO` | Optioneel. Standaard `johnverberne/projects-captainjohn` |
+| `CODEBERG_TOKEN` | Optioneel. Zonder token geen Codeberg-issue |
 | `ALLOWED_ORIGINS` | CORS voor screenshot-intake |
 
-Zonder `GITHUB_TOKEN` wordt het issue lokaal bewaard (`data/issues/`) zodat je het formulier kunt testen.
+GitHub en Codeberg zijn optioneel. Zonder token (of met `*_ENABLED=false`) wordt het issue in MongoDB of lokaal bewaard.
 
 Screenshots worden als PNG in `johnverberne/feedback` gezet (`screenshots/…png`). GitHub kan die raw-URL's wél tonen; een `localhost`-link in het issue werkt niet.
 

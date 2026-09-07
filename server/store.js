@@ -7,13 +7,29 @@ function mongoUriFromEnv() {
 
 async function connectMongo(uri = mongoUriFromEnv()) {
   if (!uri) return false;
-  if (mongoose.connection.readyState === 1) return true;
-  await mongoose.connect(uri);
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(uri);
+  }
+  await FeedbackIssue.syncIndexes();
   return true;
 }
 
 function mongoStatus() {
   return mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+}
+
+function issueUpdate(doc) {
+  const next = { ...doc };
+  const unset = {};
+  for (const key of ["githubNumber", "codebergNumber"]) {
+    if (next[key] == null) {
+      delete next[key];
+      unset[key] = "";
+    }
+  }
+  const update = { $set: next };
+  if (Object.keys(unset).length) update.$unset = unset;
+  return update;
 }
 
 async function saveFeedbackIssue(doc) {
@@ -22,7 +38,7 @@ async function saveFeedbackIssue(doc) {
     : doc.githubNumber
       ? { githubNumber: doc.githubNumber }
       : { title: doc.title, submittedAt: doc.submittedAt };
-  return FeedbackIssue.findOneAndUpdate(query, { $set: doc }, {
+  return FeedbackIssue.findOneAndUpdate(query, issueUpdate(doc), {
     upsert: true,
     new: true,
   });
@@ -36,6 +52,7 @@ module.exports = {
   mongoUriFromEnv,
   connectMongo,
   mongoStatus,
+  issueUpdate,
   saveFeedbackIssue,
   listFeedbackIssues,
 };

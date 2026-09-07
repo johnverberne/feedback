@@ -131,5 +131,55 @@ describe("API: intake en submit", () => {
     assert.equal(stored[0].codebergNumber, 3);
     assert.match(submit.body.codebergUrl, /codeberg.org/);
   });
+
+  it("GET /api/health toont GitHub en Codeberg als uit zonder token", async () => {
+    const res = await request(app).get("/api/health").expect(200);
+    assert.equal(res.body.github, false);
+    assert.equal(res.body.codeberg, false);
+    assert.equal(res.body.repo, "");
+    assert.equal(res.body.codebergRepo, "");
+  });
+
+  it("slaat GitHub over als GITHUB_ENABLED uit staat", async () => {
+    const posted = [];
+    const { createApp } = require("../server/createApp");
+    const app = createApp({
+      allowNoClient: true,
+      dataDir,
+      githubToken: "secret-token",
+      githubEnabled: "false",
+      createFeedbackIssue: async (payload) => {
+        posted.push(payload);
+        return { url: "https://github.com/example/repo/issues/1", number: 1 };
+      },
+      saveIssue: async () => {},
+      publicUrl: "http://feedback.test",
+    });
+
+    const health = await request(app).get("/api/health").expect(200);
+    assert.equal(health.body.github, false);
+
+    const intake = await request(app)
+      .post("/api/intake")
+      .send({ pageUrl: "http://localhost:5055/", pageTitle: "Captain John" })
+      .expect(201);
+    const session = await request(app).get(`/api/sessions/${intake.body.id}`).expect(200);
+    const answers = {};
+    for (const field of session.body.form.fields) {
+      if (field.type === "radio") answers[field.id] = field.options[0];
+      else if (field.type === "checkbox") answers[field.id] = [field.options[0]];
+      else answers[field.id] = "Zonder GitHub";
+    }
+
+    const submit = await request(app)
+      .post(`/api/sessions/${intake.body.id}/submit`)
+      .send({ answers })
+      .expect(200);
+
+    assert.equal(posted.length, 0);
+    assert.equal(submit.body.dryRun, true);
+    assert.equal(submit.body.githubUrl, "");
+    assert.match(submit.body.message, /bewaard/);
+  });
 });
 

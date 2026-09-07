@@ -7,6 +7,7 @@ const { buildIssueMarkdown, issueTitle } = require("./issueMarkdown");
 const { createSessionStore } = require("./sessions");
 const { createFeedbackIssue, uploadScreenshot } = require("./github");
 const { createCodebergIssue } = require("./codeberg");
+const { readIntegrations } = require("./env");
 const { mongoStatus, saveFeedbackIssue, listFeedbackIssues } = require("./store");
 
 function loadForm(formPath) {
@@ -48,21 +49,14 @@ function createApp(options = {}) {
     /\/$/,
     ""
   );
-  const githubRepo =
-    options.githubRepo || process.env.GITHUB_REPO || "johnverberne/projects-captainjohn";
+  const { github, codeberg } = readIntegrations(options);
   const githubAssetsRepo =
     options.githubAssetsRepo ||
     process.env.GITHUB_ASSETS_REPO ||
     "johnverberne/feedback";
-  const githubToken = options.githubToken || process.env.GITHUB_TOKEN || "";
   const githubLabels = parseLabels(options.githubLabels || process.env.GITHUB_LABELS);
   const projectNumber =
     options.githubProjectNumber || process.env.GITHUB_PROJECT_NUMBER || "";
-  const codebergToken = options.codebergToken || process.env.CODEBERG_TOKEN || "";
-  const codebergRepo =
-    options.codebergRepo ||
-    process.env.CODEBERG_REPO ||
-    "johnverberne/projects-captainjohn";
   const codebergUrl =
     options.codebergUrl || process.env.CODEBERG_URL || "https://codeberg.org";
   const postGithubIssue = options.createFeedbackIssue || createFeedbackIssue;
@@ -94,10 +88,10 @@ function createApp(options = {}) {
     res.json({
       ok: true,
       form: form.title,
-      github: Boolean(githubToken),
-      repo: githubRepo,
-      codeberg: Boolean(codebergToken),
-      codebergRepo,
+      github: github.enabled,
+      repo: github.enabled ? github.repo : "",
+      codeberg: codeberg.enabled,
+      codebergRepo: codeberg.enabled ? codeberg.repo : "",
       mongo: mongoStatus(),
     });
   });
@@ -162,10 +156,10 @@ function createApp(options = {}) {
     const screenshotBuffer = sessions.screenshotBuffer(session.id);
 
     try {
-      if (githubToken && screenshotBuffer) {
+      if (github.enabled && screenshotBuffer) {
         screenshotUrl = await uploadScreenshot({
           repo: githubAssetsRepo,
-          token: githubToken,
+          token: github.token,
           id: session.id,
           buffer: screenshotBuffer,
         });
@@ -186,11 +180,11 @@ function createApp(options = {}) {
       const warnings = [];
       let posted = null;
       let codebergPosted = null;
-      if (githubToken) {
+      if (github.enabled) {
         try {
           posted = await postGithubIssue({
-            repo: githubRepo,
-            token: githubToken,
+            repo: github.repo,
+            token: github.token,
             title,
             body,
             labels: githubLabels,
@@ -200,12 +194,12 @@ function createApp(options = {}) {
           warnings.push(`GitHub: ${err.message}`);
         }
       }
-      if (codebergToken) {
+      if (codeberg.enabled) {
         try {
           codebergPosted = await postCodebergIssue({
             baseUrl: codebergUrl,
-            repo: codebergRepo,
-            token: codebergToken,
+            repo: codeberg.repo,
+            token: codeberg.token,
             title,
             body,
             labels: githubLabels,
@@ -239,40 +233,37 @@ function createApp(options = {}) {
       }
 
       const postedAnywhere = Boolean(posted || codebergPosted);
-      if (!postedAnywhere) {
-        return res.json({
-          ok: true,
-          dryRun: true,
-          title,
-          body,
-          screenshotUrl,
-          warnings,
-          message: warnings.length
-            ? warnings.join(" · ")
-            : mongoStatus() === "connected"
-              ? "Issue in MongoDB bewaard. Geen GitHub- of Codeberg-token."
-              : "Geen GitHub- of Codeberg-token: issue lokaal bewaard.",
-        });
-      }
+      const targets = [
+        posted ? "GitHub" : null,
+        codebergPosted ? "Codeberg" : null,
+      ].filter(Boolean);
+      const message = postedAnywhere
+        ? `Je reactie is bewaard op ${targets.join(" en ")}.`
+        : warnings.length
+          ? warnings.join(" · ")
+          : mongoStatus() === "connected"
+            ? "Je reactie is bewaard."
+            : "Je reactie is lokaal bewaard.";
 
       res.json({
         ok: true,
-        dryRun: false,
+        dryRun: !postedAnywhere,
         title,
         body,
-        url: posted?.url || codebergPosted?.url,
-        number: posted?.number ?? codebergPosted?.number,
+        url: posted?.url || codebergPosted?.url || "",
+        number: posted?.number ?? codebergPosted?.number ?? null,
         githubUrl: posted?.url || "",
         githubNumber: posted?.number ?? null,
         codebergUrl: codebergPosted?.url || "",
         codebergNumber: codebergPosted?.number ?? null,
         screenshotUrl,
         warnings,
+        message,
       });
     } catch (err) {
       console.error(err);
       res.status(502).json({
-        error: err.message || "GitHub-issue maken mislukt",
+        error: err.message || "Feedback opslaan mislukt",
       });
     }
   });

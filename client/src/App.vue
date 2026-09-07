@@ -87,21 +87,15 @@ async function submit() {
 
     <section v-else-if="result" class="panel stack">
       <h1 class="ok">Bedankt</h1>
-      <p class="lead">
-        {{
-          result.dryRun
-            ? result.message
-            : "Je reactie is bewaard. De screenshot staat op GitHub."
-        }}
-      </p>
-      <p v-if="result.githubUrl || result.url">
+      <p class="lead">{{ result.message || "Je reactie is bewaard." }}</p>
+      <p v-if="result.githubUrl">
         <a
           class="btn-link"
-          :href="result.githubUrl || result.url"
+          :href="result.githubUrl"
           target="_blank"
           rel="noreferrer"
         >
-          GitHub{{ result.githubNumber || result.number ? ` #${result.githubNumber || result.number}` : "" }}
+          GitHub{{ result.githubNumber ? ` #${result.githubNumber}` : "" }}
         </a>
       </p>
       <p v-if="result.codebergUrl">
