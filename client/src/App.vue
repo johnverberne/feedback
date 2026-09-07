@@ -76,8 +76,11 @@ async function submit() {
 <template>
   <div class="app-shell">
     <header class="brand">
-      Captain John
-      <span>feedback</span>
+      <img class="brand-icon" src="/favicon.svg" alt="" width="40" height="40" />
+      <div>
+        Captain John
+        <span>feedback</span>
+      </div>
     </header>
 
     <p v-if="loading" class="lead">Formulier laden…</p>
@@ -88,13 +91,26 @@ async function submit() {
         {{
           result.dryRun
             ? result.message
-            : "Je reactie staat als issue op GitHub, inclusief screenshot."
+            : "Je reactie is bewaard. De screenshot staat op GitHub."
         }}
       </p>
-      <p v-if="result.url">
-        <a class="btn-link" :href="result.url" target="_blank" rel="noreferrer">
-          Open issue {{ result.number ? `#${result.number}` : "" }}
+      <p v-if="result.githubUrl || result.url">
+        <a
+          class="btn-link"
+          :href="result.githubUrl || result.url"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub{{ result.githubNumber || result.number ? ` #${result.githubNumber || result.number}` : "" }}
         </a>
+      </p>
+      <p v-if="result.codebergUrl">
+        <a class="btn-link" :href="result.codebergUrl" target="_blank" rel="noreferrer">
+          Codeberg{{ result.codebergNumber ? ` #${result.codebergNumber}` : "" }}
+        </a>
+      </p>
+      <p v-if="result.warnings?.length" class="error">
+        {{ result.warnings.join(" · ") }}
       </p>
       <img
         v-if="result.screenshotUrl"

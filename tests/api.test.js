@@ -11,6 +11,7 @@ const TINY_PNG =
 describe("API: intake en submit", () => {
   let app;
   let dataDir;
+  const saved = [];
 
   before(() => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "feedback-"));
@@ -21,6 +22,9 @@ describe("API: intake en submit", () => {
       dataDir,
       githubToken: "",
       publicUrl: "http://feedback.test",
+      saveIssue: async (doc) => {
+        saved.push(doc);
+      },
     });
   });
 
@@ -76,5 +80,56 @@ describe("API: intake en submit", () => {
     assert.match(submit.body.body, /!\[Screenshot\]/);
     assert.match(submit.body.body, /De homepage laadt traag/);
     assert.match(submit.body.body, /http:\/\/localhost:5055\//);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].formTitle, "Feedback website Captain John");
+    assert.match(saved[0].screenshotUrl, /\/api\/screenshots\//);
+    assert.ok(saved[0].answers);
+  });
+
+  it("post naar Codeberg als er een token is", async () => {
+    const posted = [];
+    const stored = [];
+    const { createApp } = require("../server/createApp");
+    const app = createApp({
+      allowNoClient: true,
+      dataDir,
+      githubToken: "",
+      codebergToken: "test-token",
+      createCodebergIssue: async (payload) => {
+        posted.push(payload);
+        return {
+          url: "https://codeberg.org/johnverberne/projects-captainjohn/issues/3",
+          number: 3,
+        };
+      },
+      saveIssue: async (doc) => {
+        stored.push(doc);
+      },
+      publicUrl: "http://feedback.test",
+    });
+
+    const intake = await request(app)
+      .post("/api/intake")
+      .send({ pageUrl: "http://localhost:5055/", pageTitle: "Captain John" })
+      .expect(201);
+    const session = await request(app).get(`/api/sessions/${intake.body.id}`).expect(200);
+    const answers = {};
+    for (const field of session.body.form.fields) {
+      if (field.type === "radio") answers[field.id] = field.options[0];
+      else if (field.type === "checkbox") answers[field.id] = [field.options[0]];
+      else answers[field.id] = "Codeberg-test";
+    }
+
+    const submit = await request(app)
+      .post(`/api/sessions/${intake.body.id}/submit`)
+      .send({ answers })
+      .expect(200);
+
+    assert.equal(submit.body.dryRun, false);
+    assert.equal(posted.length, 1);
+    assert.equal(posted[0].repo, "johnverberne/projects-captainjohn");
+    assert.equal(stored[0].codebergNumber, 3);
+    assert.match(submit.body.codebergUrl, /codeberg.org/);
   });
 });
+

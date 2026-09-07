@@ -52,11 +52,21 @@ textarea {
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-weight: 800;
   font-size: clamp(1.5rem, 5vw, 2rem);
   letter-spacing: -0.02em;
   color: var(--sea);
   line-height: 1.1;
+}
+
+.brand-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
 }
 
 .brand span {

@@ -6,6 +6,8 @@ const { parseFormMarkdown, validateAnswers } = require("./formParser");
 const { buildIssueMarkdown, issueTitle } = require("./issueMarkdown");
 const { createSessionStore } = require("./sessions");
 const { createFeedbackIssue, uploadScreenshot } = require("./github");
+const { createCodebergIssue } = require("./codeberg");
+const { mongoStatus, saveFeedbackIssue, listFeedbackIssues } = require("./store");
 
 function loadForm(formPath) {
   const markdown = fs.readFileSync(formPath, "utf8");
@@ -56,6 +58,15 @@ function createApp(options = {}) {
   const githubLabels = parseLabels(options.githubLabels || process.env.GITHUB_LABELS);
   const projectNumber =
     options.githubProjectNumber || process.env.GITHUB_PROJECT_NUMBER || "";
+  const codebergToken = options.codebergToken || process.env.CODEBERG_TOKEN || "";
+  const codebergRepo =
+    options.codebergRepo ||
+    process.env.CODEBERG_REPO ||
+    "johnverberne/projects-captainjohn";
+  const codebergUrl =
+    options.codebergUrl || process.env.CODEBERG_URL || "https://codeberg.org";
+  const postGithubIssue = options.createFeedbackIssue || createFeedbackIssue;
+  const postCodebergIssue = options.createCodebergIssue || createCodebergIssue;
   const allowedOrigins = parseOrigins(
     options.allowedOrigins || process.env.ALLOWED_ORIGINS
   );
@@ -85,7 +96,19 @@ function createApp(options = {}) {
       form: form.title,
       github: Boolean(githubToken),
       repo: githubRepo,
+      codeberg: Boolean(codebergToken),
+      codebergRepo,
+      mongo: mongoStatus(),
     });
+  });
+
+  app.get("/api/issues", async (_req, res) => {
+    try {
+      const issues = await listFeedbackIssues();
+      res.json(issues);
+    } catch (err) {
+      res.status(503).json({ error: err.message || "MongoDB niet beschikbaar" });
+    }
   });
 
   app.get("/api/form", (_req, res) => {
@@ -160,34 +183,91 @@ function createApp(options = {}) {
       });
       sessions.saveIssueMarkdown(session.id, body);
 
-      if (!githubToken) {
+      const warnings = [];
+      let posted = null;
+      let codebergPosted = null;
+      if (githubToken) {
+        try {
+          posted = await postGithubIssue({
+            repo: githubRepo,
+            token: githubToken,
+            title,
+            body,
+            labels: githubLabels,
+            projectNumber,
+          });
+        } catch (err) {
+          warnings.push(`GitHub: ${err.message}`);
+        }
+      }
+      if (codebergToken) {
+        try {
+          codebergPosted = await postCodebergIssue({
+            baseUrl: codebergUrl,
+            repo: codebergRepo,
+            token: codebergToken,
+            title,
+            body,
+            labels: githubLabels,
+          });
+        } catch (err) {
+          warnings.push(`Codeberg: ${err.message}`);
+        }
+      }
+
+      const record = {
+        sessionId: session.id,
+        title,
+        body,
+        answers: checked.answers,
+        formTitle: form.title,
+        pageUrl: session.pageUrl,
+        pageTitle: session.pageTitle,
+        userAgent: session.userAgent,
+        viewport: session.viewport,
+        screenshotUrl: screenshotUrl || "",
+        githubUrl: posted?.url || "",
+        githubNumber: posted?.number ?? null,
+        codebergUrl: codebergPosted?.url || "",
+        codebergNumber: codebergPosted?.number ?? null,
+        submittedAt: new Date(session.createdAt || Date.now()),
+      };
+      if (typeof options.saveIssue === "function") {
+        await options.saveIssue(record);
+      } else if (mongoStatus() === "connected") {
+        await saveFeedbackIssue(record);
+      }
+
+      const postedAnywhere = Boolean(posted || codebergPosted);
+      if (!postedAnywhere) {
         return res.json({
           ok: true,
           dryRun: true,
           title,
           body,
           screenshotUrl,
-          message: "Geen GITHUB_TOKEN: issue lokaal bewaard, niet naar GitHub gestuurd.",
+          warnings,
+          message: warnings.length
+            ? warnings.join(" · ")
+            : mongoStatus() === "connected"
+              ? "Issue in MongoDB bewaard. Geen GitHub- of Codeberg-token."
+              : "Geen GitHub- of Codeberg-token: issue lokaal bewaard.",
         });
       }
-
-      const posted = await createFeedbackIssue({
-        repo: githubRepo,
-        token: githubToken,
-        title,
-        body,
-        labels: githubLabels,
-        projectNumber,
-      });
 
       res.json({
         ok: true,
         dryRun: false,
         title,
         body,
-        url: posted.url,
-        number: posted.number,
+        url: posted?.url || codebergPosted?.url,
+        number: posted?.number ?? codebergPosted?.number,
+        githubUrl: posted?.url || "",
+        githubNumber: posted?.number ?? null,
+        codebergUrl: codebergPosted?.url || "",
+        codebergNumber: codebergPosted?.number ?? null,
         screenshotUrl,
+        warnings,
       });
     } catch (err) {
       console.error(err);
